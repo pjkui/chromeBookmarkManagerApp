@@ -1,0 +1,11 @@
+﻿body {
+}
+ul{
+    margin:0px;
+    padding:0;
+    padding-left:6px;
+}
+
+.bookmark_dir {
+    color: red;
+}

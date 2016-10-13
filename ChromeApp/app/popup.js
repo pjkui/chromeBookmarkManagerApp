@@ -37,6 +37,13 @@ function dumpNode(bookmarkNode, query) {
         var anchor = $('<a>');
         anchor.attr('href', bookmarkNode.url);
         anchor.text(bookmarkNode.title);
+        if (bookmarkNode.url) {
+            anchor.attr("class", "bookmark_link");
+        }
+        else {
+            anchor.attr("class", "bookmark_dir");
+
+        }
         /*
          * When clicking on a bookmark in the extension, a new tab is fired with
          * the bookmark url.
@@ -145,23 +152,21 @@ function dumpNode(bookmarkNode, query) {
 //    dumpBookmarks();
 //});
 var myBookmark = {
-    getBookmarks:function()
-    {
+    getBookmarks: function () {
         var info = document.createElement("b");
         info.innerHTML = "bbbbb";
         document.body.appendChild(info);
     }
 }
 var test = {
-    test:function()
-    {
+    test: function () {
         alert("test");
     }
 }
 
 // Run our kitten generation script as soon as the document's DOM is ready.
 document.addEventListener('DOMContentLoaded', function () {
-    myBookmark.getBookmarks();
+    //myBookmark.getBookmarks();
     //test.test();
     dumpBookmarks();
 });
