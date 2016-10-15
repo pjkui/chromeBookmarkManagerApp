@@ -3,10 +3,22 @@
 // found in the LICENSE file.
 var BookmarkManager = {
     Init: function () {
+        this.bookmarkData.length = 0;
+
+        function collectLinks(bookmark) {
+            if (bookmark.children) {
+                for (var i = 0; i < bookmark.children.length ; i++)
+                    collectLinks(bookmark.children[i])
+            }
+            BookmarkManager.AddItemByBookmarkNode(bookmark)
+        }
+        chrome.bookmarks.getTree(function (_bookmarks) {
+            collectLinks(_bookmarks[0]);
+        });
     },
     CreateItem: function (_id, _url, _title, _parentId, _dataAdded) {
         var _bookmarkItem = {};
-        _bookmarkItem.Id = _id;
+        _bookmarkItem.id = _id;
         _bookmarkItem.url = _url;
         _bookmarkItem.title = _title,
         _bookmarkItem.parentId = _parentId;
@@ -16,7 +28,7 @@ var BookmarkManager = {
 
     CreateItemByBookmarkNode: function (_bookmarkNode) {
         var _bookmarkItem = {};
-        _bookmarkItem.Id = _bookmarkNode.id;
+        _bookmarkItem.id = _bookmarkNode.id;
         _bookmarkItem.url = _bookmarkNode.url;
         _bookmarkItem.title = _bookmarkNode.title,
         _bookmarkItem.parentId = _bookmarkNode.parentId;
@@ -27,7 +39,7 @@ var BookmarkManager = {
 
     AddItem: function (_id, _url, _title, _parentId, _dataAdded) {
         var _bookmarkItem = {};
-        _bookmarkItem.Id = _id;
+        _bookmarkItem.id = _id;
         _bookmarkItem.url = _url;
         _bookmarkItem.title = _title,
         _bookmarkItem.parentId = _parentId;
@@ -38,7 +50,7 @@ var BookmarkManager = {
 
     AddItemByBookmarkNode: function (_bookmarkNode) {
         var _bookmarkItem = {};
-        _bookmarkItem.Id = _bookmarkNode.id;
+        _bookmarkItem.id = _bookmarkNode.id;
         _bookmarkItem.url = _bookmarkNode.url;
         _bookmarkItem.title = _bookmarkNode.title,
         _bookmarkItem.parentId = _bookmarkNode.parentId;
@@ -55,6 +67,7 @@ var BookmarkManager = {
             var it = this.bookmarkData[i];
             if (it.title == _title) {
                 this.bookmarkData.splice(i, 1);
+                len = this.bookmarkData.length;
                 --i;
                 ++deleteItemCount;
             }
@@ -69,6 +82,7 @@ var BookmarkManager = {
             var it = this.bookmarkData[i];
             if (it.url == _url) {
                 this.bookmarkData.splice(i, 1);
+                len = this.bookmarkData.length;
                 --i;
                 ++deleteItemCount;
             }
@@ -83,6 +97,22 @@ var BookmarkManager = {
             var it = this.bookmarkData[i];
             if (it == _item) {
                 this.bookmarkData.splice(i, 1);
+                len = this.bookmarkData.length;
+                --i;
+                ++deleteItemCount;
+            }
+        }
+        return deleteItemCount;
+    },
+    DeleteItemByItemId: function (_id) {
+        var i = 0;
+        var len = this.bookmarkData.length;
+        var deleteItemCount = 0;
+        for (; i < len; ++i) {
+            var it = this.bookmarkData[i];
+            if (it.id == _id) {
+                this.bookmarkData.splice(i, 1);
+                len = this.bookmarkData.length;
                 --i;
                 ++deleteItemCount;
             }
@@ -95,11 +125,11 @@ var BookmarkManager = {
         var i = 0;
         var len = this.bookmarkData.length;
         var deleteItemCount = 0;
-        this.repeatItems.length = 0;
         for (; i < len; ++i) {
             var it = this.bookmarkData[i];
             if (it.url == _bookmarkNode.url && it.title == _bookmarkNode.title) {
                 this.bookmarkData.splice(i, 1);
+                len = this.bookmarkData.length;
                 --i;
                 ++deleteItemCount;
             }
@@ -113,6 +143,8 @@ var BookmarkManager = {
         var i = 0;
         var temp = { url: "" };
         var firstTime = true;
+        this.repeatItems.length = 0;
+
         for (; i < len; ++i) {
             if (this.bookmarkData[i]) {
                 if (temp.url && this.bookmarkData[i].url == temp.url) {
@@ -151,6 +183,15 @@ var BookmarkManager = {
         });
         console.log(item);
         return item;
+    },
+    FindItemById: function (_id) {
+        var result = null;
+        this.bookmarkData.find(function (item) {
+            if (item.id == _id) {
+                result = item;
+            }
+        });
+        return result;
     },
 
     SortByUrl: function () {
@@ -256,6 +297,7 @@ $(function () {
         dumpBookmarks($('#search').val());
     });
     $("#GetRepetItem").click(function () {
+
         GetRepeatItems();
     });
 });
@@ -265,15 +307,18 @@ function GetRepeatItems() {
     var list = $('<ul>');
     for (var i = 0; i < BookmarkManager.repeatItems.length; ++i) {
         var li = $('<li>');
+        li.val(i);
         li.append("<b>" + BookmarkManager.repeatItems[i].title + "</b><span>" + BookmarkManager.repeatItems[i].url + "</span>");
         var options = $('<span>[<a id="editlink" href="#">Edit</a> <a id="deletelink" ' +
 'href="#">Delete</a>]</span>');
-        var edit = $('<table><tr><td>Name</td><td>' +
-                '<input id="title"></td></tr><tr><td>URL</td><td><input id="url">' +
-                '</td></tr></table>');
+        var edit = $('<input>');
         li.hover(function () {
-            li.append(options);
+            //li.append(options);
+            $(this).append(options);
+            options.val($(this).val());
             $('#deletelink').click(function () {
+                var index = $(this).parent().val();
+
                 $('#deletedialog').empty().dialog({
                     closeOnEscape: true,
                     autoOpen: false,
@@ -288,9 +333,11 @@ function GetRepeatItems() {
                     },
                     buttons: {
                         'Yes, Delete It!': function () {
-                            chrome.bookmarks.remove(String(BookmarkManager.repeatItems[i].id));
-                            span.parent().remove();
+
+                            chrome.bookmarks.remove(String(BookmarkManager.repeatItems[index].id));
+                            BookmarkManager.DeleteItemByItemId(BookmarkManager.repeatItems[index].id);
                             $(this).dialog('destroy');
+                            GetRepeatItems();
                         },
                         Cancel: function () {
                             $(this).dialog('destroy');
@@ -299,7 +346,8 @@ function GetRepeatItems() {
                 }).dialog('open');
             });
             $('#editlink').click(function () {
-                edit.val(BookmarkManager.repeatItems[i].title);
+                var index = $(this).parent().val();
+                edit.val(BookmarkManager.repeatItems[index].title);
                 $('#editdialog').empty().append(edit).dialog({
                     autoOpen: false,
                     closeOnEscape: true,
@@ -308,12 +356,17 @@ function GetRepeatItems() {
                     show: 'slide',
                     buttons: {
                         'Save': function () {
-                            chrome.bookmarks.update(String(BookmarkManager.repeatItems[i].id), {
+                            chrome.bookmarks.update(String(BookmarkManager.repeatItems[index].id), {
                                 title: edit.val()
                             });
-                            anchor.text(edit.val());
-                            options.show();
+                            var item = BookmarkManager.FindItemById(BookmarkManager.repeatItems[index].id);
+                            if (item) {
+                                item.title = edit.val();
+                            }
+                            //options.show();
+                            edit.remove();
                             $(this).dialog('destroy');
+                            GetRepeatItems();
                         },
                         'Cancel': function () {
                             $(this).dialog('destroy');
@@ -349,7 +402,7 @@ function dumpTreeNodes(bookmarkNodes, query) {
 
 function dumpNode(bookmarkNode, query) {
     //Add BookmarkNode to BookmarkManager
-    BookmarkManager.AddItemByBookmarkNode(bookmarkNode);
+    //BookmarkManager.AddItemByBookmarkNode(bookmarkNode);
 
     if (bookmarkNode.title) {
         if (query && !bookmarkNode.children) {
@@ -494,4 +547,5 @@ document.addEventListener('DOMContentLoaded', function () {
     //myBookmark.getBookmarks();
     //test.test();
     dumpBookmarks();
+    BookmarkManager.Init();
 });
